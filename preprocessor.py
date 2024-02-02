@@ -1,16 +1,35 @@
 import pandas as pd
 import re
+from datetime import datetime
 
 
 def preprocess(data):
-    pattern = '\d{1,2}/\d{1,2}/\d{2,4},\s\d{1,2}:\d{2}\s-\s'
+    pattern = r'\d{2}/\d{2}/\d{2,4}, \d{1,2}:\d{2}\u202f[apAP][mM]\s-\s'
 
     messages = re.split(pattern, data)[1:]
     dates = re.findall(pattern, data)
 
-    df = pd.DataFrame({'user_message': messages, 'message_date': dates})
+    def convert_to_24_hour_format(date_string):
+        # Replace non-breaking space (\u202f) with regular space
+        date_string = date_string.replace('\u202f', ' ')
+
+        # Parse the date string
+        date_object = datetime.strptime(date_string, '%d/%m/%y, %I:%M %p - ') if len(
+            date_string.split('/')[2]) == 14 or len(date_string.split('/')[2]) == 15 else datetime.strptime(date_string,
+                                                                                                            '%d/%m/%Y, %I:%M %p - ')
+
+        # Format the date object in 24-hour format
+        formatted_date = date_object.strftime('%d/%m/%Y, %H:%M')
+
+        return formatted_date
+
+    converted_dates = [convert_to_24_hour_format(date) for date in dates]
+
+    # Print the result
+
+    df = pd.DataFrame({'user_message': messages, 'message_date': converted_dates})
     # convert message_date type
-    df['message_date'] = pd.to_datetime(df['message_date'], format='%d/%m/%y, %H:%M - ')
+    df['message_date'] = pd.to_datetime(df['message_date'], format='%d/%m/%Y, %H:%M', errors='coerce')
 
     df.rename(columns={'message_date': 'date'}, inplace=True)
 
